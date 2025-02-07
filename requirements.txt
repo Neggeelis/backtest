@@ -1,0 +1,8 @@
+requests
+python-dotenv
+telegram
+numpy
+pandas
+matplotlib
+scikit-learn
+talib

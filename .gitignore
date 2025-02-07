@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Byte-compiled / optimized / DLL files
 __pycache__/
 *.py[cod]
@@ -169,3 +170,7 @@ cython_debug/
 
 # PyPI configuration file
 .pypirc
+=======
+# Ignorēt .env failu, lai tas netiktu pievienots versiju kontrolē
+.env
+>>>>>>> b0662a5 (Sākotnējais commit)

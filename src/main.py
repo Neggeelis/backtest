@@ -1,8 +1,19 @@
+import sys
+import os
+
+sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+
+print("SYS.PATH:", sys.path)  # Papildu pārbaude
+
+
 import tkinter as tk
 from tkinter import ttk, messagebox
+# src/main.py
+
+from src.telegram_bot import send_signal, send_profit_update
+from src.order_book import fetch_order_book, process_order_book, plot_heatmap
 from src.api import get_top_20_symbols, mexc_api_request, bybit_api_request
-from src.telegram_bot import test_telegram, send_signal, send_profit_update
-from src.order_book import fetch_order_book, process_order_book, plot_heatmap, get_order_book_metrics
+
 import asyncio
 import threading
 import time
