@@ -1,43 +1,79 @@
-import requests
 import numpy as np
 import matplotlib.pyplot as plt
+import time
+from collections import deque
 from sklearn.preprocessing import MinMaxScaler
+from src.api_helpers import send_request
 
-BINANCE_BASE_URL = "https://api.binance.com"
+# Laika kadru skaits, cik daudz vēsturisko datu saglabāt
+TIME_FRAME_SIZE = 10
+REFRESH_INTERVAL = 3  # Sekundes starp atjauninājumiem
 
-def fetch_order_book(symbol, limit=100):
-    """Iegūst Order Book datus no Binance."""
-    url = f"{BINANCE_BASE_URL}/api/v3/depth"
-    params = {"symbol": symbol, "limit": limit}
-    response = requests.get(url, params=params)
-    if response.status_code == 200:
-        return response.json()
-    else:
-        print(f"❌ Kļūda, iegūstot Order Book: {response.status_code}")
-        return None
+# Glabā aktīvos orderus (FIFO queue, saglabā pēdējos TIME_FRAME_SIZE ierakstus)
+order_book_history = deque(maxlen=TIME_FRAME_SIZE)
+
+def get_order_book(symbol):
+    """Get order book data from Gate.io API"""
+    endpoint = f"/spot/order_book"
+    params = {"currency_pair": symbol}
+    return send_request(endpoint, params=params)
 
 def process_order_book(order_book):
-    """Apstrādā Order Book datus."""
-    bids = np.array(order_book['bids'], dtype=float)
-    asks = np.array(order_book['asks'], dtype=float)
-    return bids, asks
+    """Process order book data and update the historical order list"""
+    if not order_book or "bids" not in order_book or "asks" not in order_book:
+        print("❌ Order Book dati nav pieejami.")
+        return None, None
 
-def plot_heatmap(bids, asks, symbol):
-    """Vizualizē Order Book kā Heatmap."""
-    plt.figure(figsize=(10, 6))
-    
-    # Scalējam datus
+    try:
+        bids = np.array(order_book["bids"], dtype=float)
+        asks = np.array(order_book["asks"], dtype=float)
+
+        # Aprēķina USDT vērtību katram orderim (cena * daudzums)
+        bids[:, 1] = bids[:, 0] * bids[:, 1]
+        asks[:, 1] = asks[:, 0] * asks[:, 1]
+
+        # Saglabā jauno momentāno datu kopu
+        order_book_history.append((bids, asks))
+
+        print(f"✅ Atjaunināti dati: {len(order_book_history)} laika periodi saglabāti")
+        return bids, asks
+    except ValueError as e:
+        print(f"⚠️ Kļūda datu apstrādē: {e}")
+        return None, None
+
+def plot_heatmap(symbol):
+    """Continuously update order book heatmap based on historical time frames"""
+    plt.ion()  # Ieslēdz interaktīvo režīmu
+    fig, ax = plt.subplots(figsize=(10, 6))
     scaler = MinMaxScaler()
-    bids_scaled = scaler.fit_transform(bids[:, 1].reshape(-1, 1))
-    asks_scaled = scaler.fit_transform(asks[:, 1].reshape(-1, 1))
-    
-    # Heatmap vizualizācija
-    plt.scatter(bids[:, 0], bids_scaled, color='green', label='Bids', alpha=0.6)
-    plt.scatter(asks[:, 0], asks_scaled, color='red', label='Asks', alpha=0.6)
-    
-    plt.title(f'Order Book Heatmap: {symbol}')
-    plt.xlabel('Price')
-    plt.ylabel('Quantity (Scaled)')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
+
+    while True:
+        order_book = get_order_book(symbol)
+        if not order_book:
+            print("❌ API neatgrieza datus, gaidu nākamo ciklu...")
+            time.sleep(REFRESH_INTERVAL)
+            continue
+
+        bids, asks = process_order_book(order_book)
+        if bids is None or asks is None:
+            print("⚠️ Nav pietiekami daudz datu vizualizācijai, gaidu nākamo ciklu...")
+            time.sleep(REFRESH_INTERVAL)
+            continue
+        
+        # Notīra iepriekšējo grafiku
+        ax.clear()
+
+        # Zīmē datus no visiem saglabātajiem time frames
+        for i, (bids_frame, asks_frame) in enumerate(order_book_history):
+            alpha = (i + 1) / TIME_FRAME_SIZE  # Vecākie dati ir caurspīdīgāki
+            ax.scatter(bids_frame[:, 0], bids_frame[:, 1], c='green', alpha=alpha, label='Bids' if i == TIME_FRAME_SIZE - 1 else "")
+            ax.scatter(asks_frame[:, 0], asks_frame[:, 1], c='red', alpha=alpha, label='Asks' if i == TIME_FRAME_SIZE - 1 else "")
+
+        ax.set_xlabel("Price")
+        ax.set_ylabel("USDT Volume")
+        ax.set_title(f"Order Book Heatmap for {symbol} (Last {TIME_FRAME_SIZE} Frames)")
+        ax.legend()
+        ax.grid(True)
+
+        plt.draw()
+        plt.pause(REFRESH_INTERVAL)

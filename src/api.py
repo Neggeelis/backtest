@@ -1,78 +1,41 @@
 import os
 import requests
-import hmac
-import hashlib
-import time
-import json
 from dotenv import load_dotenv
 
-load_dotenv()
-
-# Binance API
-BINANCE_BASE_URL = "https://api.binance.com"
-
-# MEXC API
-MEXC_BASE_URL = "https://api.mexc.com"
-
-# Bybit API
-BYBIT_BASE_URL = "https://api.bybit.com"
-
-def get_top_20_symbols():
-    """Iegūst top 20 kripto valūtas pēc apjoma no Binance."""
-    url = f"{BINANCE_BASE_URL}/api/v3/ticker/24hr"
-    response = requests.get(url)
-    data = response.json()
-    symbols = [item["symbol"] for item in data if item["symbol"].endswith("USDT")]
-    return symbols[:20]
-
-def mexc_api_request(endpoint, params=None, method="GET"):
-    """Veic pieprasījumu uz MEXC API."""
-    api_key = os.getenv("MEXC_API_KEY")
-    api_secret = os.getenv("MEXC_API_SECRET")
-    timestamp = str(int(time.time() * 1000))
-    
-    if params is None:
-        params = {}
-    params["timestamp"] = timestamp
-    
-    query_string = "&".join([f"{k}={v}" for k, v in sorted(params.items())])
-    signature = hmac.new(api_secret.encode(), query_string.encode(), hashlib.sha256).hexdigest()
-    params["signature"] = signature
-    
-    headers = {
-        "X-MEXC-APIKEY": api_key,
-        "Content-Type": "application/json"
+def load_api_keys():
+    """Ielādē API un Telegram atslēgas no .env faila."""
+    load_dotenv()
+    keys = {
+        "MEXC_API_KEY": os.getenv("MEXC_API_KEY"),
+        "MEXC_API_SECRET": os.getenv("MEXC_API_SECRET"),
+        "BYBIT_API_KEY": os.getenv("BYBIT_API_KEY"),
+        "BYBIT_API_SECRET": os.getenv("BYBIT_API_SECRET"),
+        "BINANCE_API_URL": os.getenv("BINANCE_API_URL"),  # Tikai publiskai piekļuvei
+        "TELEGRAM_BOT_TOKEN": os.getenv("TELEGRAM_BOT_TOKEN"),
+        "TELEGRAM_CHAT_ID": os.getenv("TELEGRAM_CHAT_ID"),
     }
     
-    if method == "GET":
-        response = requests.get(f"{MEXC_BASE_URL}{endpoint}", headers=headers, params=params)
-    else:
-        response = requests.post(f"{MEXC_BASE_URL}{endpoint}", headers=headers, json=params)
-    
-    return response.json()
+    # Pārbauda, vai MEXC API ir pieejams (Binance nav nepieciešams)
+    if not keys["MEXC_API_KEY"] or not keys["MEXC_API_SECRET"]:
+        raise ValueError("❌ MEXC_API_KEY vai MEXC_API_SECRET nav iestatīti! Pārbaudi .env failu.")
 
-def bybit_api_request(endpoint, params=None, method="GET"):
-    """Veic pieprasījumu uz Bybit API."""
-    api_key = os.getenv("BYBIT_API_KEY")
-    api_secret = os.getenv("BYBIT_API_SECRET")
-    timestamp = str(int(time.time() * 1000))
+    return keys
+
+def get_binance_data(endpoint):
+    """Iegūst publiskos datus no Binance API."""
+    keys = load_api_keys()
+    url = f"{keys['BINANCE_API_URL']}{endpoint}"
     
-    if params is None:
-        params = {}
-    params["api_key"] = api_key
-    params["timestamp"] = timestamp
-    
-    query_string = "&".join([f"{k}={v}" for k, v in sorted(params.items())])
-    signature = hmac.new(api_secret.encode(), query_string.encode(), hashlib.sha256).hexdigest()
-    params["sign"] = signature
-    
-    headers = {
-        "Content-Type": "application/json"
-    }
-    
-    if method == "GET":
-        response = requests.get(f"{BYBIT_BASE_URL}{endpoint}", headers=headers, params=params)
-    else:
-        response = requests.post(f"{BYBIT_BASE_URL}{endpoint}", headers=headers, json=params)
-    
-    return response.json()
+    try:
+        response = requests.get(url)
+        response.raise_for_status()
+        return response.json()
+    except requests.exceptions.RequestException as e:
+        print(f"❌ Binance API kļūda: {e}")
+        return None
+
+# Piemērs: iegūt Binance BTC/USDT cenu
+if __name__ == "__main__":
+    print("✅ API atslēgas ielādētas veiksmīgi!")
+    btc_price = get_binance_data("/api/v3/ticker/price?symbol=BTCUSDT")
+    print("BTC cena no Binance:", btc_price)
