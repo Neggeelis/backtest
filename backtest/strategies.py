@@ -1,5 +1,5 @@
 import numpy as np
-from backtest.indicators import calculate_rsi, calculate_macd
+from trading.indicators import calculate_rsi, calculate_macd
 
 class StrategyManager:
     def __init__(self):

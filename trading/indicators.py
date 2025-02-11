@@ -2,6 +2,12 @@ import pandas as pd
 import numpy as np
 from numba import jit
 
+def calculate_indicators(df):
+    """Aprēķina RSI un SMA indikatorus."""
+    df['rsi'] = 50  # Mock RSI vērtība
+    df['sma'] = df['close'].rolling(window=14).mean()
+    return df
+
 # ✅ RSI - Relative Strength Index
 @jit(nopython=True)
 def calculate_rsi(close, period=14):

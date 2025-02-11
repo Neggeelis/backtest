@@ -1,14 +1,20 @@
 import asyncio
 import pandas as pd
-from deepseek_analysis.deepseek_optimizer import DeepSeekOptimizer
-from deepseek_analysis.deepseek_code_optimizer import DeepSeekCodeOptimizer
-from trading.exchange import TradingExchange  # Pārliecinies, ka tev ir šī klase
+try:
+    from deepseek_analysis.deepseek_signals import DeepSeekSignals
+    from deepseek_analysis.deepseek_optimizer import DeepSeekOptimizer
+
+except ImportError:
+    print("Module deepseek_signals not found. Please ensure it is installed and accessible.")
+from deepseek_analysis.deepseek_signals import DeepSeekSignals
+
+from trading.order_book import OrderBook
+from trading.exchange import TradingExchange  # API biržas savienojums
 
 class AITradingBot:
     def __init__(self):
         self.exchange = TradingExchange()  # API savienojums ar biržu
         self.optimizer = DeepSeekOptimizer()
-        self.code_optimizer = DeepSeekCodeOptimizer()
         self.symbols = ["BTC/USDT", "ETH/USDT"]
         self.timeframes = ["1m", "5m", "15m", "1h"]
 
@@ -26,7 +32,7 @@ class AITradingBot:
             print("🔹 AI stratēģija nepārsniedz 65% win rate, uzlabojam...")
             
             # ✅ 3. DeepSeek-Coder refaktorē AI ģenerēto stratēģiju
-            improved_strategy_code = self.code_optimizer.refactor_strategy(optimized_strategy["comment"])
+            improved_strategy_code = self.optimizer.optimize_strategy(df)["comment"]
 
             # ✅ 4. Izpilda AI refaktorēto stratēģiju
             exec(improved_strategy_code, globals())

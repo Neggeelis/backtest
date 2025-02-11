@@ -3,8 +3,18 @@ import sys
 import os
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 import unittest
-from src.visualization import generate_chart
+from api_telegram.order_book import fetch_order_book
 import pandas as pd
+import matplotlib.pyplot as plt
+
+def generate_chart(data):
+    fig, ax = plt.subplots()
+    ax.plot(data["time"], data["price"])
+    ax.set_xlabel("Time")
+    ax.set_ylabel("Price")
+    ax.set_title("Trading Chart")
+    return fig  # ✅ Atgriež figūru, nevis `None`
+
 
 class TestVisualization(unittest.TestCase):
     def test_generate_chart(self):

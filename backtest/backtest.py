@@ -1,35 +1,28 @@
-import pandas as pd
-import numpy as np
 from deepseek_analysis.deepseek_optimizer import DeepSeekOptimizer
-from deepseek_analysis.deepseek_code_optimizer import DeepSeekCodeOptimizer
-import backtest.indicators as ind  
+from trading.strategies import trading_strategy
+import pandas as pd
 
 class Backtest:
-    def __init__(self):
-        self.optimizer = DeepSeekOptimizer()
-        self.code_optimizer = DeepSeekCodeOptimizer()
+    def __init__(self, historical_data):
+        self.historical_data = historical_data
 
-    def run_backtest(self, df: pd.DataFrame):
-        """AI optimizē stratēģiju un pielāgo indikatorus, ja win rate < 65%"""
+    def run(self, strategy_code):
+        """
+        Izpilda backtest AI ģenerētajai stratēģijai.
+        """
+        results = []
         
-        # ✅ 1. Aprēķina indikatorus
-        df["rsi"] = ind.calculate_rsi(df["close"])
-        df["macd"], df["macd_signal"] = ind.calculate_macd(df["close"])
+        # ✅ Definē funkciju izpildei no koda
+        exec_locals = {}
+        exec(strategy_code, {}, exec_locals)
+        
+        if "execute_strategy" not in exec_locals:
+            raise ValueError("❌ Stratēģijas kods nesatur 'execute_strategy' funkciju!")
 
-        # ✅ 2. AI ģenerē stratēģiju
-        optimized_strategy = self.optimizer.optimize_strategy(df)
+        execute_strategy = exec_locals["execute_strategy"]  # Iegūst stratēģijas funkciju
 
-        # ✅ 3. Integrē AI signālus
-        df["ai_signal"] = optimized_strategy["signal"]
-        df["final_signal"] = np.where(df["ai_signal"] != 0, df["ai_signal"], df["rsi"] < 30)
-
-        df["pnl"] = df["final_signal"].shift(1) * df["close"].pct_change()
-        total_pnl = df["pnl"].sum()
-        win_rate = (df["pnl"] > 0).mean() * 100
-
-        # ✅ 4. Ja win rate < 65%, AI refaktorē stratēģiju
-        if win_rate < 65:
-            optimized_strategy_code = self.code_optimizer.refactor_strategy(str(optimized_strategy))
-            exec(optimized_strategy_code, globals())
-
-        return {"total_pnl": total_pnl, "win_rate": win_rate}
+        for _, row in self.historical_data.iterrows():
+            decision = execute_strategy(row["close"], row["low"])  # ✅ Pareizi izsauc stratēģiju
+            results.append(decision)
+        
+        return results

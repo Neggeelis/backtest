@@ -12,6 +12,10 @@ class OrderBook:
     def get_orders(self, symbol):
         print(f"Retrieving order book for {symbol}")
 
+def fetch_order_book():
+    """Mock funkcija order book datu iegūšanai."""
+    return []
+
 
 # Laika kadru skaits, cik daudz vēsturisko datu saglabāt
 TIME_FRAME_SIZE = 10
