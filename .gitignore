@@ -4,6 +4,13 @@ __pycache__/
 *.py[cod]
 *$py.class
 
+__pycache__/
+.env
+.vscode/
+.DS_Store
+logs/
+
+
 # C extensions
 *.so
 

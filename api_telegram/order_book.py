@@ -3,7 +3,15 @@ import matplotlib.pyplot as plt
 import time
 from collections import deque
 from sklearn.preprocessing import MinMaxScaler
-from src.api_helpers import send_request
+from api_telegram.api_helpers import send_request
+
+class OrderBook:
+    def __init__(self):
+        print("Order Book Initialized")
+
+    def get_orders(self, symbol):
+        print(f"Retrieving order book for {symbol}")
+
 
 # Laika kadru skaits, cik daudz vēsturisko datu saglabāt
 TIME_FRAME_SIZE = 10
